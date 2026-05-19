@@ -24,6 +24,17 @@ const CELL_MAP: Record<string, keyof MandateData> = {
   C68: 'leadAuditor',
 };
 
+const FALLBACK_LABELS: Record<string, RegExp[]> = {
+  companyName: [/raison\s*sociale/i, /société/i, /entreprise/i, /company/i],
+  address: [/adresse/i, /siège/i, /address/i],
+  leadAuditor: [/auditeur\s*principal/i, /lead\s*auditor/i],
+  contactName: [/contact/i, /personne\s*à\s*contacter/i],
+  duration: [/durée/i, /duration/i, /nombre\s*de\s*jours/i],
+  referential: [/référentiel/i, /referential/i, /standard/i],
+  scope: [/périmètre/i, /scope/i, /perimetre/i],
+  dates: [/date/i, /période/i, /periode/i, /window/i],
+};
+
 function findSheet(workbook: XLSX.WorkBook): string {
   const sheetNames = workbook.SheetNames.map(s => s.toLowerCase());
   for (const keyword of SHEET_KEYWORDS) {
@@ -31,6 +42,32 @@ function findSheet(workbook: XLSX.WorkBook): string {
     if (idx >= 0) return workbook.SheetNames[idx];
   }
   return workbook.SheetNames[0];
+}
+
+function fallbackSearch(sheet: XLSX.WorkSheet, field: keyof MandateData): string {
+  const patterns = FALLBACK_LABELS[field];
+  if (!patterns) return '';
+
+  const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1:Z100');
+  for (let row = range.s.r; row <= range.e.r; row++) {
+    for (let col = range.s.c; col <= range.e.c; col++) {
+      const addr = XLSX.utils.encode_cell({ r: row, c: col });
+      const cell = sheet[addr];
+      if (cell) {
+        const val = String(cell.v).trim();
+        for (const pattern of patterns) {
+          if (pattern.test(val)) {
+            const nextAddr = XLSX.utils.encode_cell({ r: row, c: col + 1 });
+            const nextCell = sheet[nextAddr];
+            if (nextCell) {
+              return String(nextCell.v).trim();
+            }
+          }
+        }
+      }
+    }
+  }
+  return '';
 }
 
 export interface ParseResult {
@@ -52,6 +89,13 @@ export function parseMandateFile(buffer: ArrayBuffer): ParseResult {
     for (const [cellRef, field] of Object.entries(CELL_MAP)) {
       const cell = sheet[cellRef];
       raw[field] = cell ? String(cell.v).trim() : '';
+    }
+
+    for (const field of Object.keys(FALLBACK_LABELS) as (keyof MandateData)[]) {
+      if (!raw[field]) {
+        const fallback = fallbackSearch(sheet, field);
+        if (fallback) raw[field] = fallback;
+      }
     }
 
     const duration = parseFloat(raw.duration) || 3;

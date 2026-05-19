@@ -10,8 +10,8 @@ import ValidationPanel from '@/components/ValidationPanel';
 import DocxPreview from '@/components/DocxPreview';
 import { MandateData, AuditPlan, DayPlan, Activity, ValidationResult, AppStep } from '@/lib/types';
 import { parseMandateFile, detectReferentialType, detectAnnounced } from '@/lib/parseMandate';
-import { getDefaultIFSSchedule } from '@/lib/ifs-food-v8';
-import { getCombinedSchedule } from '@/lib/ifs-brc-v9';
+import { IFSScheduleActivity } from '@/lib/ifs-food-v8';
+import { IFsBrcScheduleActivity } from '@/lib/ifs-brc-v9';
 import { matchTemplate } from '@/lib/templateMatcher';
 import { validatePlan } from '@/lib/validation';
 
@@ -19,27 +19,52 @@ function generateId(): string {
   return Math.random().toString(36).substring(2, 9);
 }
 
-function buildPlanFromTemplate(
+type ScheduleActivity = IFSScheduleActivity | IFsBrcScheduleActivity;
+
+function getChapterIFS(a: ScheduleActivity): string {
+  if (a.type === 'fixed') return '';
+  if ('chapterIFS' in a) return a.chapterIFS;
+  if ('chapterIds' in a) return a.chapterIds.join(', ');
+  return '';
+}
+
+function getChapterBRC(a: ScheduleActivity): string | undefined {
+  if (a.type === 'fixed') return undefined;
+  if ('chapterBRC' in a) return a.chapterBRC;
+  return undefined;
+}
+
+function getDuration(a: ScheduleActivity): number {
+  if (a.type === 'fixed') return 0;
+  return a.duration;
+}
+
+function getIsOnSite(a: ScheduleActivity): boolean {
+  if (a.type === 'fixed') return false;
+  return a.isOnSite;
+}
+
+async function buildPlanFromTemplate(
   mandate: MandateData,
   referentialType: 'IFS' | 'IFS+BRC',
   isAnnounced: boolean,
   durationDays: number
-): AuditPlan {
+): Promise<AuditPlan> {
   const schedule = referentialType === 'IFS'
-    ? getDefaultIFSSchedule(durationDays, isAnnounced)
-    : getCombinedSchedule(durationDays, isAnnounced);
+    ? (await import('@/lib/ifs-food-v8')).getDefaultIFSSchedule(durationDays, isAnnounced)
+    : (await import('@/lib/ifs-brc-v9')).getCombinedSchedule(durationDays, isAnnounced);
 
   const days: DayPlan[] = schedule.map(sd => ({
     day: sd.day,
     label: `Jour ${sd.day}`,
-    activities: sd.activities.map((a, i) => ({
+    activities: sd.activities.map((a: ScheduleActivity, i: number) => ({
       id: `act-${sd.day}-${i}-${generateId()}`,
       time: a.time,
-      chapterIFS: a.type === 'chapter' ? (a as any).chapterIFS || (a as any).chapterIds?.join(', ') || (a as any).chapterCodes || '' : '',
-      chapterBRC: a.type === 'chapter' ? (a as any).chapterBRC || '' : undefined,
+      chapterIFS: getChapterIFS(a),
+      chapterBRC: getChapterBRC(a),
       description: a.label,
-      duration: a.duration || 30,
-      isOnSite: a.isOnSite ?? false,
+      duration: getDuration(a) || 30,
+      isOnSite: getIsOnSite(a),
       isFixed: a.type === 'fixed',
       isTraceability: a.label.toLowerCase().includes('traçabilité') || a.label.toLowerCase().includes('tracabilite'),
       day: sd.day,
@@ -92,9 +117,9 @@ export default function Home() {
     setStep('configure');
   }, []);
 
-  const handleConfigConfirm = useCallback(() => {
+  const handleConfigConfirm = useCallback(async () => {
     if (!mandate) return;
-    const newPlan = buildPlanFromTemplate(
+    const newPlan = await buildPlanFromTemplate(
       mandate,
       config.referentialType,
       config.isAnnounced,

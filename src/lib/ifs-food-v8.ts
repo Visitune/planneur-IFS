@@ -6,17 +6,28 @@ export interface IFSChapterDef {
   category: string;
 }
 
+export type IFSScheduleFixed = {
+  type: 'fixed';
+  time: string;
+  label: string;
+  description: string;
+};
+
+export type IFSScheduleChapter = {
+  type: 'chapter';
+  time: string;
+  chapterIds: string[];
+  label: string;
+  description: string;
+  isOnSite: boolean;
+  duration: number;
+};
+
+export type IFSScheduleActivity = IFSScheduleFixed | IFSScheduleChapter;
+
 export interface IFSScheduleDay {
   day: number;
-  activities: {
-    type: 'fixed' | 'chapter';
-    time: string;
-    chapterIds?: string[];
-    label: string;
-    description: string;
-    isOnSite?: boolean;
-    duration?: number;
-  }[];
+  activities: IFSScheduleActivity[];
 }
 
 export const IFS_CHAPTERS: IFSChapterDef[] = [
@@ -42,7 +53,51 @@ export const IFS_CHAPTERS: IFSChapterDef[] = [
 ];
 
 export function getDefaultIFSSchedule(durationDays: number, isAnnounced: boolean): IFSScheduleDay[] {
-  const base: IFSScheduleDay[] = [
+  if (durationDays <= 2) return get2DayIFSSchedule();
+  if (durationDays === 3) return get3DayIFSSchedule();
+  if (durationDays === 4) return get4DayIFSSchedule();
+  return get5DayIFSSchedule();
+}
+
+function get2DayIFSSchedule(): IFSScheduleDay[] {
+  return [
+    {
+      day: 1,
+      activities: [
+        { type: 'fixed', time: '08h15', label: 'Arrivée sur le site', description: 'Arrivée sur le site' },
+        { type: 'fixed', time: '08h30', label: "Réunion d'ouverture", description: "RÉUNION D'OUVERTURE" },
+        { type: 'chapter', time: '08h45', chapterIds: ['gouvernance'], label: 'Gouvernance et Engagement', description: 'Gouvernance et Engagement', isOnSite: false, duration: 45 },
+        { type: 'chapter', time: '09h30', chapterIds: ['evaluation1'], label: 'Évaluation sur site: réception', description: 'Évaluation sur site: réception au chargement', isOnSite: true, duration: 150 },
+        { type: 'fixed', time: '12h00', label: 'Repas', description: 'Repas rapide' },
+        { type: 'chapter', time: '12h45', chapterIds: ['haccp'], label: 'HACCP', description: 'HACCP, Allergènes', isOnSite: true, duration: 60 },
+        { type: 'chapter', time: '13h45', chapterIds: ['tracabilite'], label: 'Traçabilité générale', description: 'Traçabilité générale', isOnSite: true, duration: 45 },
+        { type: 'chapter', time: '14h30', chapterIds: ['achats'], label: 'Achats', description: 'Achats / Sourcing', isOnSite: true, duration: 45 },
+        { type: 'chapter', time: '15h15', chapterIds: ['specifications', 'fraude'], label: 'Spécifications & Fraude', description: 'Spécifications, Fraude alimentaire', isOnSite: true, duration: 45 },
+        { type: 'chapter', time: '16h00', chapterIds: ['hygiene'], label: "Gestion de l'hygiène", description: "Hygiène, déchets, nuisibles", isOnSite: true, duration: 45 },
+        { type: 'chapter', time: '16h45', chapterIds: ['mesures', 'qualite'], label: 'Mesures & Management', description: 'Mesures et management qualité', isOnSite: true, duration: 30 },
+        { type: 'fixed', time: '17h15', label: 'Fin de la première journée', description: 'Fin de la première journée' },
+      ],
+    },
+    {
+      day: 2,
+      activities: [
+        { type: 'fixed', time: '08h15', label: 'Arrivée', description: 'Deuxième journée: Arrivée sur le site' },
+        { type: 'chapter', time: '08h30', chapterIds: ['evaluation2', 'evaluation3'], label: 'Évaluation sur site (suite)', description: 'Évaluation sur site approfondie', isOnSite: true, duration: 180 },
+        { type: 'fixed', time: '11h30', label: 'Repas', description: 'Repas rapide' },
+        { type: 'chapter', time: '12h15', chapterIds: ['etalonnage', 'hygiene'], label: 'Étalonnage & Hygiène', description: 'Étalonnage et gestion hygiène', isOnSite: true, duration: 60 },
+        { type: 'chapter', time: '13h15', chapterIds: ['protection', 'transport'], label: 'Protection & Transport', description: 'Protection actes malveillants, transport', isOnSite: true, duration: 45 },
+        { type: 'chapter', time: '14h00', chapterIds: ['management', 'ressources'], label: 'Management & Ressources', description: 'Management qualité et ressources', isOnSite: true, duration: 60 },
+        { type: 'chapter', time: '15h00', chapterIds: ['developpement'], label: 'Développement', description: 'Développement produits/procédés', isOnSite: true, duration: 45 },
+        { type: 'fixed', time: '15h45', label: 'Préparation clôture', description: 'Préparation réunion de clôture' },
+        { type: 'fixed', time: '16h15', label: 'Réunion de clôture', description: 'RÉUNION DE CLOTURE' },
+        { type: 'fixed', time: '16h45', label: "Fin de l'audit", description: "Fin de l'audit" },
+      ],
+    },
+  ];
+}
+
+function get3DayIFSSchedule(): IFSScheduleDay[] {
+  return [
     {
       day: 1,
       activities: [
@@ -90,41 +145,40 @@ export function getDefaultIFSSchedule(durationDays: number, isAnnounced: boolean
       ],
     },
   ];
+}
 
-  if (durationDays <= 2) {
-    return base.slice(0, 2);
-  }
-  if (durationDays >= 4) {
-    const extraDay: IFSScheduleDay = {
-      day: 3,
-      activities: [
-        { type: 'fixed', time: '08h15', label: 'Arrivée', description: 'Arrivée sur le site' },
-        { type: 'chapter', time: '08h30', chapterIds: ['evaluation4', 'ressources'], label: 'Évaluation sur site (suite)', description: 'Évaluation sur site et gestion ressources', isOnSite: true, duration: 240 },
-        { type: 'fixed', time: '12h30', label: 'Repas', description: 'Repas rapide' },
-        { type: 'chapter', time: '13h30', chapterIds: ['developpement', 'protection', 'transport', 'qualite'], label: 'Process & Management', description: 'Procédés, Protection, Transport, Management qualité', isOnSite: true, duration: 180 },
-        { type: 'fixed', time: '16h30', label: 'Préparation clôture', description: 'Préparation réunion de clôture' },
-        { type: 'fixed', time: '17h00', label: 'Réunion de clôture', description: 'RÉUNION DE CLOTURE' },
-        { type: 'fixed', time: '17h30', label: "Fin de l'audit", description: "Fin de l'audit" },
-      ],
-    };
-    if (durationDays === 4) {
-      return [...base, extraDay];
-    }
-    return [...base, extraDay, {
-      day: 5,
-      activities: [
-        { type: 'fixed', time: '08h15', label: 'Arrivée', description: 'Arrivée sur le site' },
-        { type: 'chapter', time: '08h30', chapterIds: ['evaluation4'], label: 'Évaluation approfondie', description: 'Évaluation approfondie sur site', isOnSite: true, duration: 240 },
-        { type: 'fixed', time: '12h30', label: 'Repas', description: 'Repas rapide' },
-        { type: 'chapter', time: '13h30', chapterIds: ['ressources', 'qualite'], label: 'Révisions finales', description: 'Révisions finales et synthèse', isOnSite: false, duration: 180 },
-        { type: 'fixed', time: '16h30', label: 'Préparation clôture', description: 'Préparation réunion de clôture' },
-        { type: 'fixed', time: '17h00', label: 'Réunion de clôture', description: 'RÉUNION DE CLOTURE' },
-        { type: 'fixed', time: '17h30', label: "Fin de l'audit", description: "Fin de l'audit" },
-      ],
-    }];
-  }
+function get4DayIFSSchedule(): IFSScheduleDay[] {
+  const base3 = get3DayIFSSchedule();
+  const extraDay: IFSScheduleDay = {
+    day: 4,
+    activities: [
+      { type: 'fixed', time: '08h15', label: 'Arrivée', description: 'Quatrième journée: Arrivée sur le site' },
+      { type: 'chapter', time: '08h30', chapterIds: ['evaluation4', 'ressources'], label: 'Évaluation approfondie', description: 'Évaluation site approfondie et ressources', isOnSite: true, duration: 240 },
+      { type: 'fixed', time: '12h30', label: 'Repas', description: 'Repas rapide' },
+      { type: 'chapter', time: '13h30', chapterIds: ['developpement', 'protection', 'transport', 'qualite'], label: 'Process & Management', description: 'Procédés, Protection, Transport, Management qualité', isOnSite: true, duration: 180 },
+      { type: 'fixed', time: '16h30', label: 'Préparation clôture', description: 'Préparation réunion de clôture' },
+      { type: 'fixed', time: '17h00', label: 'Réunion de clôture', description: 'RÉUNION DE CLOTURE' },
+      { type: 'fixed', time: '17h30', label: "Fin de l'audit", description: "Fin de l'audit" },
+    ],
+  };
+  return [...base3, extraDay];
+}
 
-  return base;
+function get5DayIFSSchedule(): IFSScheduleDay[] {
+  const base4 = get4DayIFSSchedule();
+  const extraDay: IFSScheduleDay = {
+    day: 5,
+    activities: [
+      { type: 'fixed', time: '08h15', label: 'Arrivée', description: 'Cinquième journée: Arrivée sur le site' },
+      { type: 'chapter', time: '08h30', chapterIds: ['evaluation2', 'evaluation4'], label: 'Évaluation approfondie', description: 'Évaluation approfondie sur site', isOnSite: true, duration: 240 },
+      { type: 'fixed', time: '12h30', label: 'Repas', description: 'Repas rapide' },
+      { type: 'chapter', time: '13h30', chapterIds: ['ressources', 'qualite', 'mesures'], label: 'Révisions finales', description: 'Révisions finales et synthèse qualité', isOnSite: false, duration: 180 },
+      { type: 'fixed', time: '16h30', label: 'Préparation clôture', description: 'Préparation réunion de clôture' },
+      { type: 'fixed', time: '17h00', label: 'Réunion de clôture', description: 'RÉUNION DE CLOTURE' },
+      { type: 'fixed', time: '17h30', label: "Fin de l'audit", description: "Fin de l'audit" },
+    ],
+  };
+  return [...base4, extraDay];
 }
 
 export function getChapterById(id: string): IFSChapterDef | undefined {

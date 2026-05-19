@@ -118,7 +118,22 @@ function buildHeaderInfoTable(plan: AuditPlan): Table {
   });
 }
 
-function buildDayTable(day: { day: number; label: string; activities: Activity[] }, isCombined: boolean): Table {
+function timeToMinutes(time: string): number {
+  const parts = time.replace('h', ':').split(':');
+  return parseInt(parts[0]) * 60 + (parseInt(parts[1]) || 0);
+}
+
+function minutesToTime(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${h}h${m.toString().padStart(2, '0')}`;
+}
+
+function buildDayTable(
+  day: { day: number; label: string; activities: Activity[] },
+  isCombined: boolean,
+  traceabilityMarker?: { day: number; time: string; dayLabel: string }
+): Table {
   const totalCols = isCombined ? 6 : 5;
 
   const headerLabels = isCombined
@@ -129,12 +144,34 @@ function buildDayTable(day: { day: number; label: string; activities: Activity[]
     buildCell(h, { bold: true, size: 16, color: 'FFFFFF', shading: DOCX_COLORS.C_RED_HEADER })
   );
 
-  const activityRows = day.activities.map(a => buildActivityRow(a, isCombined, totalCols));
+  let rows = day.activities.map(a => buildActivityRow(a, isCombined, totalCols));
+
+  if (traceabilityMarker && traceabilityMarker.day === day.day) {
+    const launchMin = timeToMinutes(traceabilityMarker.time);
+    const availMin = launchMin + 240;
+    const availTime = minutesToTime(availMin);
+
+    const markerAct: Activity = {
+      id: 'trace-marker',
+      time: availTime,
+      chapterIFS: '',
+      description: `Mise à disposition documents traçabilité (lancement ${traceabilityMarker.time})`,
+      duration: 0,
+      isOnSite: false,
+      isFixed: true,
+      isTraceability: true,
+      day: day.day,
+    };
+
+    const insertIdx = rows.length - 1;
+    const markerRow = buildActivityRow(markerAct, isCombined, totalCols);
+    rows.splice(insertIdx, 0, markerRow);
+  }
 
   return new Table({
     rows: [
       new TableRow({ tableHeader: true, children: headerCells }),
-      ...activityRows,
+      ...rows,
     ],
   });
 }
@@ -195,42 +232,9 @@ export async function generateAuditPlanDocx(plan: AuditPlan): Promise<Blob> {
                 }),
               ],
             }),
-            buildDayTable(day, isCombined),
+            buildDayTable(day, isCombined, plan.traceabilityMarker),
             new Paragraph({ spacing: { after: 200 } }),
           ]),
-          ...(plan.traceabilityMarker
-            ? [
-                new Paragraph({
-                  spacing: { before: 200 },
-                  children: [
-                    new TextRun({
-                      text: 'Test de traçabilité',
-                      bold: true,
-                      size: 22,
-                      font: 'Calibri',
-                    }),
-                  ],
-                }),
-                new Paragraph({
-                  children: [
-                    new TextRun({
-                      text: `Lancement: ${plan.traceabilityMarker.dayLabel} à ${plan.traceabilityMarker.time}`,
-                      size: 20,
-                      font: 'Calibri',
-                    }),
-                  ],
-                }),
-                new Paragraph({
-                  children: [
-                    new TextRun({
-                      text: 'Mise à disposition des documents dans les 4h suivant le lancement',
-                      size: 18,
-                      font: 'Calibri',
-                    }),
-                  ],
-                }),
-              ]
-            : []),
         ],
       },
     ],

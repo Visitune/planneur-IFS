@@ -1,17 +1,30 @@
 import { IFSScheduleDay } from './ifs-food-v8';
 
+export type IFsBrcScheduleFixed = {
+  type: 'fixed';
+  time: string;
+  label: string;
+  description: string;
+  chapterIFS?: string;
+  chapterBRC?: string;
+};
+
+export type IFsBrcScheduleChapter = {
+  type: 'chapter';
+  time: string;
+  chapterIFS: string;
+  chapterBRC: string;
+  label: string;
+  description: string;
+  isOnSite: boolean;
+  duration: number;
+};
+
+export type IFsBrcScheduleActivity = IFsBrcScheduleFixed | IFsBrcScheduleChapter;
+
 export interface IFsBrcScheduleDay {
   day: number;
-  activities: {
-    type: 'fixed' | 'chapter';
-    time: string;
-    chapterIFS?: string;
-    chapterBRC?: string;
-    label: string;
-    description: string;
-    isOnSite?: boolean;
-    duration?: number;
-  }[];
+  activities: IFsBrcScheduleActivity[];
 }
 
 export function getCombinedSchedule(durationDays: number, isAnnounced: boolean): IFsBrcScheduleDay[] {

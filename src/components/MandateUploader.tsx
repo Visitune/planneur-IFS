@@ -88,6 +88,17 @@ export default function MandateUploader({ onFileLoaded, loading }: Props) {
             <Upload size={40} style={{ color: 'var(--accent)' }} />
             <p className="font-medium" style={{ color: 'var(--ink)' }}>Déposez le fichier Excel du mandat ici</p>
             <p className="text-sm" style={{ color: 'var(--muted)' }}>ou cliquez pour parcourir (.xlsx)</p>
+            <div className="flex items-center gap-4 mt-1 text-xs" style={{ color: 'var(--muted)' }}>
+              <span className="flex items-center gap-1">
+                <FileText size={12} /> Format: Mandat Ecocert (.xlsx)
+              </span>
+              <span className="flex items-center gap-1">
+                <CheckCircle size={12} /> Détection automatique de la feuille
+              </span>
+            </div>
+            <div className="mt-1 p-2 rounded-lg text-xs" style={{ backgroundColor: 'var(--accent-soft)', color: 'var(--accent-dark)' }}>
+              <strong>Exemple:</strong> Fichier contenant les onglets &laquo; Mandat &raquo; ou &laquo; Notification de mission &raquo;
+            </div>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-3">

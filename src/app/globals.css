@@ -11,11 +11,27 @@
   --accent-soft: rgba(182, 69, 44, 0.12);
   --sage: #5e7d62;
   --sage-light: #e2efda;
+  --green-terrain: #25bc74;
+  --green-trace: #375623;
+  --grey-fixed: #808080;
+  --red-header: #e31a0e;
 }
 
 @theme inline {
-  --color-background: var(--bg);
-  --color-foreground: var(--ink);
+  --color-bg: var(--bg);
+  --color-bg-soft: var(--bg-soft);
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-dark: var(--accent-dark);
+  --color-accent-soft: var(--accent-soft);
+  --color-sage: var(--sage);
+  --color-sage-light: var(--sage-light);
+  --color-green-terrain: var(--green-terrain);
+  --color-green-trace: var(--green-trace);
+  --color-grey-fixed: var(--grey-fixed);
+  --color-red-header: var(--red-header);
   --font-sans: var(--font-inter);
   --font-mono: var(--font-jetbrains-mono);
 }
@@ -24,6 +40,7 @@ body {
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font-inter), system-ui, sans-serif;
+  font-display: swap;
 }
 
 input, select, button, textarea {

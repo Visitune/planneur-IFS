@@ -92,18 +92,52 @@ export function validatePlan(plan: AuditPlan): ValidationResult[] {
         icon: 'check-circle',
       });
     }
+
+    for (let i = 0; i < activities.length - 1; i++) {
+      const cur = activities[i];
+      const next = activities[i + 1];
+      const curEnd = timeToMinutes(cur.time) + (cur.duration || 0);
+      const nextStart = timeToMinutes(next.time);
+      if (curEnd > nextStart) {
+        results.push({
+          type: 'warning',
+          message: `Jour ${day.day}: "${cur.description}" (fin ${minutesToTime(curEnd)}) chevauche "${next.description}" (début ${next.time})`,
+          icon: 'info',
+        });
+      }
+    }
   }
 
   const traceabilityAct = plan.days
     .flatMap(d => d.activities)
     .find(a => a.isTraceability);
 
-  if (traceabilityAct && traceabilityAct.day === 1) {
-    results.push({
-      type: 'warning',
-      message: 'Il est recommandé de placer la traçabilité au Jour 2 ou ultérieur',
-      icon: 'info',
-    });
+  if (traceabilityAct) {
+    if (traceabilityAct.day === 1) {
+      results.push({
+        type: 'warning',
+        message: 'Il est recommandé de placer la traçabilité au Jour 2 ou ultérieur',
+        icon: 'info',
+      });
+    }
+    if (traceabilityAct.duration > 60) {
+      results.push({
+        type: 'warning',
+        message: `La traçabilité (${traceabilityAct.duration}min) dépasse 60 min recommandé`,
+        icon: 'info',
+      });
+    }
+  }
+
+  if (plan.traceabilityMarker) {
+    const markerMin = timeToMinutes(plan.traceabilityMarker.time);
+    if (markerMin < timeToMinutes('08h00') || markerMin > timeToMinutes('16h00')) {
+      results.push({
+        type: 'warning',
+        message: `L'heure du test traçabilité (${plan.traceabilityMarker.time}) devrait être entre 08h00 et 16h00`,
+        icon: 'info',
+      });
+    }
   }
 
   for (const day of plan.days) {

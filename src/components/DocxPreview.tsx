@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { AuditPlan } from '@/lib/types';
 import { generateAuditPlanDocx } from '@/lib/generatePlanDocx';
 import { generateBilanDocx } from '@/lib/generateBilanDocx';
+import { docxToHtml, generatePreviewHtml } from '@/lib/previewDocx';
 import { FileText, FileSpreadsheet, X, Download, Eye, Loader2 } from 'lucide-react';
 
 interface Props {
@@ -13,11 +14,18 @@ interface Props {
 }
 
 export default function DocxPreview({ plan, onBack, onReset }: Props) {
-  const [generating, setGenerating] = useState<'plan' | 'bilan' | 'both' | null>(null);
+  const [generating, setGenerating] = useState<'plan' | 'bilan' | 'both' | 'preview-plan' | 'preview-bilan' | null>(null);
   const [preview, setPreview] = useState<{ html: string; title: string } | null>(null);
+  const [progressMsg, setProgressMsg] = useState('');
+
+  const getFilename = (type: 'plan' | 'bilan') => {
+    const prefix = type === 'plan' ? 'Plan_Audit' : 'Bilan_Cloture';
+    return `${prefix}_${plan.mandate.companyName.replace(/[^a-zA-Z0-9]/g, '_')}.docx`;
+  };
 
   const handleDownload = async (type: 'plan' | 'bilan') => {
     setGenerating(type);
+    setProgressMsg(`Génération du ${type === 'plan' ? "plan d'audit" : 'bilan de clôture'}...`);
     try {
       const blob = type === 'plan'
         ? await generateAuditPlanDocx(plan)
@@ -26,9 +34,7 @@ export default function DocxPreview({ plan, onBack, onReset }: Props) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = type === 'plan'
-        ? `Plan_Audit_${plan.mandate.companyName.replace(/[^a-zA-Z0-9]/g, '_')}.docx`
-        : `Bilan_Cloture_${plan.mandate.companyName.replace(/[^a-zA-Z0-9]/g, '_')}.docx`;
+      a.download = getFilename(type);
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -37,10 +43,34 @@ export default function DocxPreview({ plan, onBack, onReset }: Props) {
       console.error('Generation error:', err);
     }
     setGenerating(null);
+    setProgressMsg('');
+  };
+
+  const handlePreview = async (type: 'plan' | 'bilan') => {
+    const genKey = type === 'plan' ? 'preview-plan' : 'preview-bilan';
+    setGenerating(genKey);
+    setProgressMsg('Génération de la prévisualisation...');
+
+    try {
+      const generateBlob = type === 'plan'
+        ? () => generateAuditPlanDocx(plan)
+        : () => generateBilanDocx(plan);
+
+      const html = await generatePreviewHtml(generateBlob, setProgressMsg);
+      setPreview({
+        html,
+        title: type === 'plan' ? 'Plan d\'audit (F-IFS-08)' : 'Bilan de clôture (F-IFS-15)',
+      });
+    } catch (err) {
+      console.error('Preview error:', err);
+    }
+    setGenerating(null);
+    setProgressMsg('');
   };
 
   const handleDownloadAll = async () => {
     setGenerating('both');
+    setProgressMsg('Génération des deux documents...');
     try {
       const [planBlob, bilanBlob] = await Promise.all([
         generateAuditPlanDocx(plan),
@@ -58,14 +88,17 @@ export default function DocxPreview({ plan, onBack, onReset }: Props) {
         URL.revokeObjectURL(url);
       };
 
-      download(planBlob, `Plan_Audit_${plan.mandate.companyName.replace(/[^a-zA-Z0-9]/g, '_')}.docx`);
+      setProgressMsg('Téléchargement du plan d\'audit...');
+      download(planBlob, getFilename('plan'));
       setTimeout(() => {
-        download(bilanBlob, `Bilan_Cloture_${plan.mandate.companyName.replace(/[^a-zA-Z0-9]/g, '_')}.docx`);
+        setProgressMsg('Téléchargement du bilan de clôture...');
+        download(bilanBlob, getFilename('bilan'));
       }, 500);
     } catch (err) {
       console.error('Generation error:', err);
     }
     setGenerating(null);
+    setProgressMsg('');
   };
 
   return (
@@ -94,7 +127,17 @@ export default function DocxPreview({ plan, onBack, onReset }: Props) {
               <div className="text-sm font-medium" style={{ color: 'var(--ink)' }}>Plan d&apos;audit</div>
               <div className="text-xs" style={{ color: 'var(--muted)' }}>F-IFS-08 · Document Word</div>
             </div>
-            <Download size={16} style={{ color: 'var(--accent)' }} />
+            <div className="flex gap-1">
+              <button
+                onClick={(e) => { e.stopPropagation(); handlePreview('plan'); }}
+                disabled={generating !== null}
+                className="p-1.5 rounded hover:bg-black/5 transition"
+                title="Prévisualiser"
+              >
+                {generating === 'preview-plan' ? <Loader2 size={14} className="animate-spin" /> : <Eye size={14} />}
+              </button>
+              <Download size={16} style={{ color: 'var(--accent)' }} />
+            </div>
           </button>
 
           <button
@@ -110,9 +153,26 @@ export default function DocxPreview({ plan, onBack, onReset }: Props) {
               <div className="text-sm font-medium" style={{ color: 'var(--ink)' }}>Bilan de clôture</div>
               <div className="text-xs" style={{ color: 'var(--muted)' }}>F-IFS-15 · Document Word</div>
             </div>
-            <Download size={16} style={{ color: 'var(--sage)' }} />
+            <div className="flex gap-1">
+              <button
+                onClick={(e) => { e.stopPropagation(); handlePreview('bilan'); }}
+                disabled={generating !== null}
+                className="p-1.5 rounded hover:bg-black/5 transition"
+                title="Prévisualiser"
+              >
+                {generating === 'preview-bilan' ? <Loader2 size={14} className="animate-spin" /> : <Eye size={14} />}
+              </button>
+              <Download size={16} style={{ color: 'var(--sage)' }} />
+            </div>
           </button>
         </div>
+
+        {progressMsg && (
+          <div className="flex items-center gap-2 text-sm py-2" style={{ color: 'var(--accent)' }}>
+            <Loader2 size={14} className="animate-spin" />
+            {progressMsg}
+          </div>
+        )}
 
         <button
           onClick={handleDownloadAll}
