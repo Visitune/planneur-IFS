@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f4efe7;
+  --bg-soft: #fffaf3;
+  --paper: rgba(255, 252, 247, 0.94);
+  --ink: #1f2933;
+  --muted: #5f6c7b;
+  --accent: #b6452c;
+  --accent-dark: #822914;
+  --accent-soft: rgba(182, 69, 44, 0.12);
+  --sage: #5e7d62;
+  --sage-light: #e2efda;
+}
+
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--ink);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-jetbrains-mono);
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-inter), system-ui, sans-serif;
+}
+
+input, select, button, textarea {
+  font-family: inherit;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  opacity: 1;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
